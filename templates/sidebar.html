@@ -1,0 +1,48 @@
+<!-- Sidebar navigation partial -->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-icon">DC</div>
+        <div class="brand-text">
+            <h2>Dominion RC</h2>
+            <p>Gestion des prêts</p>
+        </div>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="/situation/" id="nav-situation">
+            <span class="nav-icon">📊</span> Situation
+        </a>
+        <a href="/mouvement/" id="nav-mouvement">
+            <span class="nav-icon">🔄</span> Mouvements
+        </a>
+        <a href="/administration/" id="nav-admin" class="admin-only">
+            <span class="nav-icon">⚙️</span> Administration
+        </a>
+    </nav>
+    <div class="sidebar-user">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div class="user-info">
+            <p id="userName">—</p>
+            <span id="userRole">—</span>
+        </div>
+        <button class="btn-logout" onclick="doLogout()" title="Déconnexion">⏻</button>
+    </div>
+</aside>
+<script>
+(async function loadUserInfo() {
+    try {
+        const u = await apiCall('/api/me/');
+        document.getElementById('userName').textContent = u.name;
+        document.getElementById('userRole').textContent = u.role;
+        document.getElementById('userAvatar').textContent = u.name.charAt(0).toUpperCase();
+        if (u.role !== 'ADMIN') {
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+        }
+        window.currentUser = u;
+    } catch {}
+    // Active nav
+    const path = window.location.pathname;
+    document.querySelectorAll('.sidebar-nav a').forEach(a => {
+        if (path.startsWith(a.getAttribute('href'))) a.classList.add('active');
+    });
+})();
+</script>

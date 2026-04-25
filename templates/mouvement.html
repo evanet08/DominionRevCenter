@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block title %}Mouvements{% endblock %}
+{% block body %}
+{% include 'sidebar.html' %}
+<main class="main-content">
+    <div class="page-header">
+        <div>
+            <h1>🔄 Gestion des Mouvements</h1>
+            <p>Entrées, prêts, retours et sorties d'équipements</p>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:24px;">
+        <!-- Form -->
+        <div class="card">
+            <div class="card-header">
+                <h3><span class="icon">➕</span> Nouveau mouvement</h3>
+            </div>
+            <form id="movementForm" onsubmit="return createMovement(event)">
+                <div class="form-group">
+                    <label for="actionType">Type d'action *</label>
+                    <select class="form-control" id="actionType" required onchange="onActionChange()">
+                        <option value="">— Sélectionner —</option>
+                        <option value="ENTREE">↓ Entrée</option>
+                        <option value="PRET">→ Prêt</option>
+                        <option value="RETOUR">← Retour</option>
+                        <option value="SORTIE">↑ Sortie</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="equipmentSel">Équipement *</label>
+                    <select class="form-control" id="equipmentSel" required>
+                        <option value="">— Sélectionner —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="quantity">Quantité *</label>
+                    <input type="number" class="form-control" id="quantity" min="1" value="1" required>
+                </div>
+                <div class="form-group" id="assignedToGroup">
+                    <label for="assignedTo">Assigné à *</label>
+                    <select class="form-control" id="assignedTo">
+                        <option value="">— Sélectionner —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="directionSel">Direction</label>
+                    <select class="form-control" id="directionSel" onchange="loadDeptFilter()">
+                        <option value="">— Optionnel —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="departmentSel">Département</label>
+                    <select class="form-control" id="departmentSel">
+                        <option value="">— Optionnel —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="notes">Remarques</label>
+                    <textarea class="form-control" id="notes" rows="2" placeholder="Notes optionnelles..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;" id="submitBtn">
+                    <span id="submitText">Enregistrer le mouvement</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Recent Movements -->
+        <div class="card">
+            <div class="card-header">
+                <h3><span class="icon">📜</span> Mouvements récents</h3>
+                <div>
+                    <select class="form-control" id="recentFilter" onchange="loadRecent()" style="width:auto;display:inline-block;padding:6px 30px 6px 12px;font-size:0.8rem;">
+                        <option value="">Tous</option>
+                        <option value="ENTREE">Entrées</option>
+                        <option value="PRET">Prêts</option>
+                        <option value="RETOUR">Retours</option>
+                        <option value="SORTIE">Sorties</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Date</th><th>Type</th><th>Équipement</th><th>Qté</th><th>Par</th><th>À</th></tr></thead>
+                    <tbody id="recentBody"><tr><td colspan="6" class="text-center">Chargement...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+{% block extra_js %}
+<script>
+function onActionChange() {
+    const action = document.getElementById('actionType').value;
+    const grp = document.getElementById('assignedToGroup');
+    const sel = document.getElementById('assignedTo');
+    if (action === 'PRET' || action === 'SORTIE') {
+        grp.style.display = 'block';
+        sel.required = true;
+    } else {
+        grp.style.display = 'block';
+        sel.required = false;
+    }
+}
+
+async function loadFormData() {
+    try {
+        const [eq, users, dirs] = await Promise.all([
+            apiCall('/api/equipment-list/'),
+            apiCall('/api/users-list/'),
+            apiCall('/api/directions/')
+        ]);
+        const eqSel = document.getElementById('equipmentSel');
+        eq.forEach(e => { const o = document.createElement('option'); o.value = e.id; o.textContent = e.name + ' [' + e.internal_id + ']'; eqSel.appendChild(o); });
+        const uSel = document.getElementById('assignedTo');
+        users.forEach(u => { const o = document.createElement('option'); o.value = u.id; o.textContent = u.name; uSel.appendChild(o); });
+        const dSel = document.getElementById('directionSel');
+        dirs.forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; dSel.appendChild(o); });
+    } catch (e) { showToast('Erreur chargement données', 'error'); }
+}
+
+async function loadDeptFilter() {
+    const dirId = document.getElementById('directionSel').value;
+    const sel = document.getElementById('departmentSel');
+    sel.innerHTML = '<option value="">— Optionnel —</option>';
+    if (!dirId) return;
+    try {
+        const depts = await apiCall('/api/departments/?direction_id=' + dirId);
+        depts.forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; sel.appendChild(o); });
+    } catch {}
+}
+
+async function createMovement(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const txtEl = document.getElementById('submitText');
+    btn.disabled = true;
+    txtEl.innerHTML = '<span class="spinner"></span>';
+    try {
+        const payload = {
+            action_type: document.getElementById('actionType').value,
+            equipment: parseInt(document.getElementById('equipmentSel').value),
+            quantity: parseInt(document.getElementById('quantity').value),
+            notes: document.getElementById('notes').value.trim(),
+        };
+        const at = document.getElementById('assignedTo').value;
+        if (at) payload.assigned_to = at;
+        const dir = document.getElementById('directionSel').value;
+        if (dir) payload.direction = parseInt(dir);
+        const dept = document.getElementById('departmentSel').value;
+        if (dept) payload.department = parseInt(dept);
+        await apiCall('/api/movements/', 'POST', payload);
+        showToast('Mouvement enregistré avec succès !', 'success');
+        document.getElementById('movementForm').reset();
+        loadRecent();
+    } catch (err) {
+        const msg = err.quantity || err.assigned_to || err.detail || err.error || 'Erreur lors de la création';
+        showToast(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'error');
+    } finally {
+        btn.disabled = false;
+        txtEl.textContent = 'Enregistrer le mouvement';
+    }
+}
+
+async function loadRecent() {
+    try {
+        let url = '/api/movements/?';
+        const f = document.getElementById('recentFilter').value;
+        if (f) url += 'action_type=' + f;
+        const data = await apiCall(url);
+        const body = document.getElementById('recentBody');
+        if (!data.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">📜</div><p>Aucun mouvement</p></div></td></tr>'; return; }
+        body.innerHTML = data.map(m => `<tr>
+            <td style="font-size:0.8rem">${formatDate(m.date)}</td>
+            <td>${badgeFor(m.action_type)}</td>
+            <td style="font-weight:600;color:var(--text-primary)">${m.equipment_name}</td>
+            <td style="font-weight:700">${m.quantity}</td>
+            <td style="font-size:0.82rem">${m.completed_by_name || '—'}</td>
+            <td style="font-size:0.82rem">${m.assigned_to_name || '—'}</td>
+        </tr>`).join('');
+    } catch { document.getElementById('recentBody').innerHTML = '<tr><td colspan="6" class="text-center" style="color:var(--accent-red)">Erreur</td></tr>'; }
+}
+
+// Init
+loadFormData();
+loadRecent();
+</script>
+{% endblock %}

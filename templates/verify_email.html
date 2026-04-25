@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Vérification Email{% endblock %}
+{% block body %}
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="brand">
+            <div class="brand-icon">✓</div>
+            <h1>Vérification Email</h1>
+            <p id="verifyMsg">Vérification en cours...</p>
+        </div>
+        <div id="verifyResult"></div>
+        <a href="/login/" class="btn btn-primary mt-2" style="width:100%;justify-content:center;text-decoration:none;">Retour à la connexion</a>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(async function() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const msg = document.getElementById('verifyMsg');
+    const result = document.getElementById('verifyResult');
+    if (!token) { msg.textContent = 'Aucun token fourni.'; return; }
+    try {
+        const res = await fetch('/api/verify-email/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            msg.textContent = 'Email vérifié avec succès !';
+            msg.style.color = 'var(--accent-green)';
+            result.innerHTML = '<p style="color:var(--text-secondary);text-align:center;margin-top:12px;">Vous pouvez maintenant vous connecter.</p>';
+        } else {
+            msg.textContent = data.error || 'Erreur de vérification';
+            msg.style.color = 'var(--accent-red)';
+        }
+    } catch { msg.textContent = 'Erreur réseau'; msg.style.color = 'var(--accent-red)'; }
+})();
+</script>
+{% endblock %}

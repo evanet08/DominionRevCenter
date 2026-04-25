@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+{% block title %}Administration{% endblock %}
+{% block body %}
+{% include 'sidebar.html' %}
+<main class="main-content">
+    <div class="page-header">
+        <div>
+            <h1>⚙️ Administration</h1>
+            <p>Gestion des utilisateurs, équipements et organisation</p>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('users', this)">👥 Utilisateurs</button>
+        <button class="tab-btn" onclick="switchTab('equipment', this)">📦 Équipements</button>
+        <button class="tab-btn" onclick="switchTab('org', this)">🏢 Organisation</button>
+    </div>
+
+    <!-- Users Tab -->
+    <div class="tab-content active" id="tab-users">
+        <div class="card">
+            <div class="card-header">
+                <h3><span class="icon">👥</span> Gestion des utilisateurs</h3>
+                <button class="btn btn-primary btn-sm" onclick="openUserModal()">+ Nouvel utilisateur</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Téléphone</th><th>Email vérifié</th><th>Statut</th><th>Actions</th></tr></thead>
+                    <tbody id="usersBody"><tr><td colspan="7" class="text-center">Chargement...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equipment Tab -->
+    <div class="tab-content" id="tab-equipment">
+        <div class="card">
+            <div class="card-header">
+                <h3><span class="icon">📦</span> Gestion des équipements</h3>
+                <button class="btn btn-primary btn-sm" onclick="openEquipModal()">+ Nouvel équipement</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Nom</th><th>Modèle</th><th>ID Interne</th><th>N° Série</th><th>État</th><th>Stock</th><th>Actions</th></tr></thead>
+                    <tbody id="equipBody"><tr><td colspan="7" class="text-center">Chargement...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Organization Tab -->
+    <div class="tab-content" id="tab-org">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+            <!-- Directions -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><span class="icon">🏛️</span> Directions</h3>
+                    <button class="btn btn-primary btn-sm" onclick="openOrgModal('direction')">+</button>
+                </div>
+                <div id="dirList" class="empty-state"><p>Chargement...</p></div>
+            </div>
+            <!-- Departments -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><span class="icon">🏢</span> Départements</h3>
+                    <button class="btn btn-primary btn-sm" onclick="openOrgModal('department')">+</button>
+                </div>
+                <div id="deptList" class="empty-state"><p>Chargement...</p></div>
+            </div>
+            <!-- SubDepartments -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><span class="icon">📁</span> Sous-départements</h3>
+                    <button class="btn btn-primary btn-sm" onclick="openOrgModal('subdepartment')">+</button>
+                </div>
+                <div id="subList" class="empty-state"><p>Chargement...</p></div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- User Modal -->
+<div class="modal-overlay" id="userModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="userModalTitle">Nouvel utilisateur</h3>
+            <button class="modal-close" onclick="closeModal('userModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="userForm">
+                <div class="form-row">
+                    <div class="form-group"><label>Nom complet *</label><input class="form-control" id="uName" required></div>
+                    <div class="form-group"><label>Email *</label><input type="email" class="form-control" id="uEmail" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Téléphone</label><input class="form-control" id="uPhone"></div>
+                    <div class="form-group">
+                        <label>Rôle *</label>
+                        <select class="form-control" id="uRole">
+                            <option value="USER">Utilisateur</option>
+                            <option value="MANAGER">Gestionnaire</option>
+                            <option value="ADMIN">Administrateur</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" id="passwordGroup"><label>Mot de passe *</label><input type="password" class="form-control" id="uPassword" minlength="6"></div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('userModal')">Annuler</button>
+            <button class="btn btn-primary" onclick="saveUser()" id="saveUserBtn">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Equipment Modal -->
+<div class="modal-overlay" id="equipModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="equipModalTitle">Nouvel équipement</h3>
+            <button class="modal-close" onclick="closeModal('equipModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="equipForm">
+                <div class="form-row">
+                    <div class="form-group"><label>Nom *</label><input class="form-control" id="eqName" required></div>
+                    <div class="form-group"><label>Modèle</label><input class="form-control" id="eqModel"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>ID interne *</label><input class="form-control" id="eqInternalId" required></div>
+                    <div class="form-group"><label>N° de série</label><input class="form-control" id="eqSerial"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>État</label>
+                        <select class="form-control" id="eqCondition">
+                            <option value="NEUF">Neuf</option>
+                            <option value="BON" selected>Bon état</option>
+                            <option value="USAGE">Usagé</option>
+                            <option value="DEFECTUEUX">Défectueux</option>
+                            <option value="HORS_SERVICE">Hors service</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Description</label><input class="form-control" id="eqDesc"></div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('equipModal')">Annuler</button>
+            <button class="btn btn-primary" onclick="saveEquipment()">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Org Modal -->
+<div class="modal-overlay" id="orgModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="orgModalTitle">Nouvelle entrée</h3>
+            <button class="modal-close" onclick="closeModal('orgModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="orgForm">
+                <div class="form-group" id="orgParentGroup" style="display:none">
+                    <label id="orgParentLabel">Parent</label>
+                    <select class="form-control" id="orgParent"></select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Nom *</label><input class="form-control" id="orgName" required></div>
+                    <div class="form-group"><label>Code</label><input class="form-control" id="orgCode"></div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('orgModal')">Annuler</button>
+            <button class="btn btn-primary" onclick="saveOrg()">Enregistrer</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let editingUserId = null;
+let currentOrgType = '';
+
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+
+// ── USERS ──
+async function loadUsers() {
+    try {
+        const users = await apiCall('/api/users/');
+        const body = document.getElementById('usersBody');
+        if (!users.length) { body.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Aucun utilisateur</p></div></td></tr>'; return; }
+        body.innerHTML = users.map(u => `<tr>
+            <td style="font-weight:600;color:var(--text-primary)">${u.name}</td>
+            <td>${u.email}</td>
+            <td>${badgeFor(u.role)}</td>
+            <td>${u.phone || '—'}</td>
+            <td>${u.email_verified ? '<span class="badge badge-verified">✓ Vérifié</span>' : '<span class="badge badge-unverified">✕ Non vérifié</span>'}</td>
+            <td>${u.is_active ? '<span class="badge badge-verified">Actif</span>' : '<span class="badge badge-unverified">Inactif</span>'}</td>
+            <td>
+                <div class="flex gap-1">
+                    ${!u.email_verified ? '<button class="btn btn-warning btn-sm" onclick="sendVerification(\'' + u.id + '\')">📧 Vérifier</button>' : ''}
+                    <button class="btn btn-ghost btn-sm" onclick="editUser(\'' + u.id + '\')">✏️</button>
+                    ${u.is_active ? '<button class="btn btn-danger btn-sm" onclick="deactivateUser(\'' + u.id + '\')">✕</button>' : ''}
+                </div>
+            </td>
+        </tr>`).join('');
+    } catch (e) { showToast('Erreur chargement utilisateurs', 'error'); }
+}
+
+function openUserModal(user = null) {
+    editingUserId = null;
+    document.getElementById('userModalTitle').textContent = 'Nouvel utilisateur';
+    document.getElementById('uName').value = '';
+    document.getElementById('uEmail').value = '';
+    document.getElementById('uPhone').value = '';
+    document.getElementById('uRole').value = 'USER';
+    document.getElementById('uPassword').value = '';
+    document.getElementById('passwordGroup').style.display = 'block';
+    document.getElementById('uPassword').required = true;
+    if (user) {
+        editingUserId = user.id;
+        document.getElementById('userModalTitle').textContent = 'Modifier utilisateur';
+        document.getElementById('uName').value = user.name;
+        document.getElementById('uEmail').value = user.email;
+        document.getElementById('uPhone').value = user.phone || '';
+        document.getElementById('uRole').value = user.role;
+        document.getElementById('passwordGroup').style.display = 'none';
+        document.getElementById('uPassword').required = false;
+    }
+    openModal('userModal');
+}
+
+async function editUser(id) {
+    try {
+        const u = await apiCall('/api/users/' + id + '/');
+        openUserModal(u);
+    } catch { showToast('Erreur', 'error'); }
+}
+
+async function saveUser() {
+    const btn = document.getElementById('saveUserBtn');
+    btn.disabled = true;
+    try {
+        if (editingUserId) {
+            await apiCall('/api/users/' + editingUserId + '/', 'PUT', {
+                name: document.getElementById('uName').value,
+                phone: document.getElementById('uPhone').value,
+                role: document.getElementById('uRole').value,
+            });
+            showToast('Utilisateur modifié', 'success');
+        } else {
+            await apiCall('/api/users/', 'POST', {
+                name: document.getElementById('uName').value,
+                email: document.getElementById('uEmail').value,
+                phone: document.getElementById('uPhone').value,
+                role: document.getElementById('uRole').value,
+                password: document.getElementById('uPassword').value,
+            });
+            showToast('Utilisateur créé', 'success');
+        }
+        closeModal('userModal');
+        loadUsers();
+    } catch (e) {
+        showToast(e.error || e.email?.[0] || 'Erreur', 'error');
+    } finally { btn.disabled = false; }
+}
+
+async function sendVerification(userId) {
+    try {
+        const r = await fetch('/api/send-verification/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            credentials: 'same-origin',
+            body: JSON.stringify({ user_id: userId })
+        });
+        const data = await r.json();
+        if (r.ok) { showToast(data.message, 'success'); loadUsers(); }
+        else showToast(data.error, 'error');
+    } catch { showToast('Erreur réseau', 'error'); }
+}
+
+async function deactivateUser(id) {
+    if (!confirm('Désactiver cet utilisateur ?')) return;
+    try { await apiCall('/api/users/' + id + '/', 'DELETE'); showToast('Utilisateur désactivé', 'success'); loadUsers(); }
+    catch { showToast('Erreur', 'error'); }
+}
+
+// ── EQUIPMENT ──
+let editingEquipId = null;
+async function loadEquipment() {
+    try {
+        const eq = await apiCall('/api/equipment/');
+        const body = document.getElementById('equipBody');
+        if (!eq.length) { body.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Aucun équipement</p></div></td></tr>'; return; }
+        body.innerHTML = eq.map(e => `<tr>
+            <td style="font-weight:600;color:var(--text-primary)">${e.name}</td>
+            <td>${e.model || '—'}</td>
+            <td><code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px;font-size:0.8rem">${e.internal_id}</code></td>
+            <td>${e.serial_number || '—'}</td>
+            <td>${e.condition || '—'}</td>
+            <td style="font-weight:700;color:${(e.current_stock||0) > 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">${e.current_stock || 0}</td>
+            <td><button class="btn btn-ghost btn-sm" onclick="editEquip(${e.id})">✏️</button></td>
+        </tr>`).join('');
+    } catch { showToast('Erreur', 'error'); }
+}
+
+function openEquipModal(eq = null) {
+    editingEquipId = null;
+    document.getElementById('equipModalTitle').textContent = 'Nouvel équipement';
+    document.getElementById('eqName').value = '';
+    document.getElementById('eqModel').value = '';
+    document.getElementById('eqInternalId').value = '';
+    document.getElementById('eqSerial').value = '';
+    document.getElementById('eqCondition').value = 'BON';
+    document.getElementById('eqDesc').value = '';
+    if (eq) {
+        editingEquipId = eq.id;
+        document.getElementById('equipModalTitle').textContent = 'Modifier équipement';
+        document.getElementById('eqName').value = eq.name;
+        document.getElementById('eqModel').value = eq.model || '';
+        document.getElementById('eqInternalId').value = eq.internal_id;
+        document.getElementById('eqSerial').value = eq.serial_number || '';
+        document.getElementById('eqCondition').value = eq.condition || 'BON';
+        document.getElementById('eqDesc').value = eq.description || '';
+    }
+    openModal('equipModal');
+}
+
+async function editEquip(id) {
+    try { const e = await apiCall('/api/equipment/' + id + '/'); openEquipModal(e); }
+    catch { showToast('Erreur', 'error'); }
+}
+
+async function saveEquipment() {
+    try {
+        const payload = {
+            name: document.getElementById('eqName').value,
+            model: document.getElementById('eqModel').value,
+            internal_id: document.getElementById('eqInternalId').value,
+            serial_number: document.getElementById('eqSerial').value,
+            condition: document.getElementById('eqCondition').value,
+            description: document.getElementById('eqDesc').value,
+        };
+        if (editingEquipId) {
+            await apiCall('/api/equipment/' + editingEquipId + '/', 'PUT', payload);
+            showToast('Équipement modifié', 'success');
+        } else {
+            await apiCall('/api/equipment/', 'POST', payload);
+            showToast('Équipement créé', 'success');
+        }
+        closeModal('equipModal');
+        loadEquipment();
+    } catch (e) { showToast(e.internal_id?.[0] || e.error || 'Erreur', 'error'); }
+}
+
+// ── ORGANIZATION ──
+async function loadOrg() {
+    try {
+        const [dirs, depts, subs] = await Promise.all([
+            apiCall('/api/directions/'), apiCall('/api/departments/'), apiCall('/api/subdepartments/')
+        ]);
+        document.getElementById('dirList').innerHTML = dirs.length ? dirs.map(d => `<div style="padding:8px 12px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
+            <div><strong style="color:var(--text-primary)">${d.name}</strong>${d.code ? '<br><small style="color:var(--text-muted)">Code: '+d.code+'</small>' : ''}</div>
+        </div>`).join('') : '<div class="empty-state"><p>Aucune direction</p></div>';
+        document.getElementById('deptList').innerHTML = depts.length ? depts.map(d => `<div style="padding:8px 12px;border-bottom:1px solid var(--border-color);">
+            <strong style="color:var(--text-primary)">${d.name}</strong><br><small style="color:var(--text-muted)">${d.direction_name}</small>
+        </div>`).join('') : '<div class="empty-state"><p>Aucun département</p></div>';
+        document.getElementById('subList').innerHTML = subs.length ? subs.map(s => `<div style="padding:8px 12px;border-bottom:1px solid var(--border-color);">
+            <strong style="color:var(--text-primary)">${s.name}</strong><br><small style="color:var(--text-muted)">${s.department_name}</small>
+        </div>`).join('') : '<div class="empty-state"><p>Aucun sous-département</p></div>';
+    } catch { showToast('Erreur chargement organisation', 'error'); }
+}
+
+async function openOrgModal(type) {
+    currentOrgType = type;
+    const parentGroup = document.getElementById('orgParentGroup');
+    const parentSel = document.getElementById('orgParent');
+    document.getElementById('orgName').value = '';
+    document.getElementById('orgCode').value = '';
+    parentSel.innerHTML = '';
+    if (type === 'direction') {
+        document.getElementById('orgModalTitle').textContent = 'Nouvelle direction';
+        parentGroup.style.display = 'none';
+    } else if (type === 'department') {
+        document.getElementById('orgModalTitle').textContent = 'Nouveau département';
+        document.getElementById('orgParentLabel').textContent = 'Direction *';
+        parentGroup.style.display = 'block';
+        const dirs = await apiCall('/api/directions/');
+        dirs.forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; parentSel.appendChild(o); });
+    } else {
+        document.getElementById('orgModalTitle').textContent = 'Nouveau sous-département';
+        document.getElementById('orgParentLabel').textContent = 'Département *';
+        parentGroup.style.display = 'block';
+        const depts = await apiCall('/api/departments/');
+        depts.forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = d.name + ' (' + d.direction_name + ')'; parentSel.appendChild(o); });
+    }
+    openModal('orgModal');
+}
+
+async function saveOrg() {
+    try {
+        const payload = { name: document.getElementById('orgName').value, code: document.getElementById('orgCode').value };
+        let url = '';
+        if (currentOrgType === 'direction') { url = '/api/directions/'; }
+        else if (currentOrgType === 'department') { url = '/api/departments/'; payload.direction = parseInt(document.getElementById('orgParent').value); }
+        else { url = '/api/subdepartments/'; payload.department = parseInt(document.getElementById('orgParent').value); }
+        await apiCall(url, 'POST', payload);
+        showToast('Enregistré', 'success');
+        closeModal('orgModal');
+        loadOrg();
+    } catch (e) { showToast(e.name?.[0] || e.error || 'Erreur', 'error'); }
+}
+
+// Init
+loadUsers(); loadEquipment(); loadOrg();
+</script>
+{% endblock %}

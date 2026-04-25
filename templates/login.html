@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Connexion{% endblock %}
+{% block body %}
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="brand">
+            <div class="brand-icon">DC</div>
+            <h1>Dominion RC</h1>
+            <p>Système de gestion des prêts</p>
+        </div>
+        <div class="login-error" id="loginError"></div>
+        <form id="loginForm" onsubmit="return handleLogin(event)">
+            <div class="form-group">
+                <label for="email">Adresse email</label>
+                <input type="email" class="form-control" id="email" placeholder="votre@email.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary" id="loginBtn">
+                <span id="loginBtnText">Se connecter</span>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const errEl = document.getElementById('loginError');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    btn.disabled = true;
+    document.getElementById('loginBtnText').innerHTML = '<span class="spinner"></span>';
+    errEl.classList.remove('show');
+    try {
+        const res = await fetch('/api/login/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            credentials: 'same-origin',
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            if (data.error === 'email_not_verified') {
+                errEl.textContent = 'Veuillez vérifier votre email avant de vous connecter.';
+            } else {
+                errEl.textContent = data.error || 'Erreur de connexion';
+            }
+            errEl.classList.add('show');
+            return;
+        }
+        window.location.href = '/situation/';
+    } catch (err) {
+        errEl.textContent = 'Erreur réseau';
+        errEl.classList.add('show');
+    } finally {
+        btn.disabled = false;
+        document.getElementById('loginBtnText').textContent = 'Se connecter';
+    }
+}
+</script>
+{% endblock %}

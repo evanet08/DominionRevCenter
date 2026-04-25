@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block title %}Situation{% endblock %}
+{% block body %}
+{% include 'sidebar.html' %}
+<main class="main-content">
+    <div class="page-header">
+        <div>
+            <h1>📊 Situation Générale</h1>
+            <p>Vue d'ensemble du stock, prêts actifs et mouvements</p>
+        </div>
+        <button class="btn btn-ghost" onclick="refreshAll()">🔄 Actualiser</button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card blue">
+            <div class="stat-icon">📦</div>
+            <div><div class="stat-value" id="statEquipment">—</div><div class="stat-label">Équipements</div></div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-icon">🔄</div>
+            <div><div class="stat-value" id="statMovements">—</div><div class="stat-label">Mouvements</div></div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-icon">📋</div>
+            <div><div class="stat-value" id="statLoans">—</div><div class="stat-label">Prêts actifs</div></div>
+        </div>
+        <div class="stat-card cyan">
+            <div class="stat-icon">👥</div>
+            <div><div class="stat-value" id="statUsers">—</div><div class="stat-label">Utilisateurs</div></div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('stock', this)">📦 Stock actuel</button>
+        <button class="tab-btn" onclick="switchTab('loans', this)">📋 Prêts actifs</button>
+        <button class="tab-btn" onclick="switchTab('history', this)">📜 Historique</button>
+    </div>
+
+    <!-- Stock Tab -->
+    <div class="tab-content active" id="tab-stock">
+        <div class="card">
+            <div class="card-header">
+                <h3><span class="icon">📦</span> Stock actuel des équipements</h3>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Équipement</th><th>ID Interne</th><th>Modèle</th><th>État</th><th>Stock</th></tr></thead>
+                    <tbody id="stockBody"><tr><td colspan="5" class="text-center">Chargement...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loans Tab -->
+    <div class="tab-content" id="tab-loans">
+        <div class="card">
+            <div class="card-header">
+                <h3><span class="icon">📋</span> Prêts actifs (non retournés)</h3>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Équipement</th><th>ID Interne</th><th>Assigné à</th><th>Quantité</th><th>Date prêt</th><th>Direction</th></tr></thead>
+                    <tbody id="loansBody"><tr><td colspan="6" class="text-center">Chargement...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Tab -->
+    <div class="tab-content" id="tab-history">
+        <div class="card">
+            <div class="card-header">
+                <h3><span class="icon">📜</span> Historique des mouvements</h3>
+            </div>
+            <!-- Summary -->
+            <div class="stats-grid mb-2" id="historySummary"></div>
+            <!-- Filters -->
+            <div class="form-row mb-2">
+                <div class="form-group">
+                    <label>Type de mouvement</label>
+                    <select class="form-control" id="historyFilter" onchange="loadHistory()">
+                        <option value="">Tous</option>
+                        <option value="ENTREE">Entrées</option>
+                        <option value="PRET">Prêts</option>
+                        <option value="RETOUR">Retours</option>
+                        <option value="SORTIE">Sorties</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Équipement</label>
+                    <select class="form-control" id="historyEquipment" onchange="loadHistory()">
+                        <option value="">Tous</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Date</th><th>Type</th><th>Équipement</th><th>Qté</th><th>Effectué par</th><th>Assigné à</th><th>Notes</th></tr></thead>
+                    <tbody id="historyBody"><tr><td colspan="7" class="text-center">Chargement...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+{% block extra_js %}
+<script>
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+}
+
+async function loadStats() {
+    try {
+        const s = await apiCall('/api/dashboard-stats/');
+        document.getElementById('statEquipment').textContent = s.total_equipment;
+        document.getElementById('statMovements').textContent = s.total_movements;
+        document.getElementById('statLoans').textContent = s.active_loans;
+        document.getElementById('statUsers').textContent = s.total_users;
+    } catch {}
+}
+
+async function loadStock() {
+    try {
+        const data = await apiCall('/api/stock/');
+        const body = document.getElementById('stockBody');
+        if (!data.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="icon">📦</div><p>Aucun équipement enregistré</p></div></td></tr>'; return; }
+        body.innerHTML = data.map(s => `<tr>
+            <td style="font-weight:600;color:var(--text-primary)">${s.equipment_name}</td>
+            <td><code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px;font-size:0.8rem">${s.internal_id}</code></td>
+            <td>${s.model || '—'}</td>
+            <td>${s.condition}</td>
+            <td style="font-weight:700;color:${s.current_stock > 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">${s.current_stock}</td>
+        </tr>`).join('');
+    } catch { document.getElementById('stockBody').innerHTML = '<tr><td colspan="5" class="text-center" style="color:var(--accent-red)">Erreur de chargement</td></tr>'; }
+}
+
+async function loadLoans() {
+    try {
+        const data = await apiCall('/api/loans/');
+        const body = document.getElementById('loansBody');
+        if (!data.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">✓</div><p>Aucun prêt actif</p></div></td></tr>'; return; }
+        body.innerHTML = data.map(l => `<tr>
+            <td style="font-weight:600;color:var(--text-primary)">${l.equipment_name}</td>
+            <td><code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px;font-size:0.8rem">${l.internal_id}</code></td>
+            <td>${l.assigned_to_name || '—'}</td>
+            <td style="font-weight:700;color:var(--accent-orange)">${l.quantity_loaned}</td>
+            <td>${formatDate(l.loan_date)}</td>
+            <td>${l.direction_name || '—'}</td>
+        </tr>`).join('');
+    } catch { document.getElementById('loansBody').innerHTML = '<tr><td colspan="6" class="text-center" style="color:var(--accent-red)">Erreur</td></tr>'; }
+}
+
+async function loadHistory() {
+    try {
+        let url = '/api/history/?';
+        const at = document.getElementById('historyFilter').value;
+        const eq = document.getElementById('historyEquipment').value;
+        if (at) url += 'action_type=' + at + '&';
+        if (eq) url += 'equipment_id=' + eq + '&';
+        const data = await apiCall(url);
+        // Summary
+        const sm = data.summary;
+        document.getElementById('historySummary').innerHTML = `
+            <div class="stat-card green" style="padding:16px"><div class="stat-icon" style="width:36px;height:36px;font-size:1rem">↓</div><div><div class="stat-value" style="font-size:1.3rem">${sm.total_entrees}</div><div class="stat-label">Entrées</div></div></div>
+            <div class="stat-card orange" style="padding:16px"><div class="stat-icon" style="width:36px;height:36px;font-size:1rem">→</div><div><div class="stat-value" style="font-size:1.3rem">${sm.total_prets}</div><div class="stat-label">Prêts</div></div></div>
+            <div class="stat-card blue" style="padding:16px"><div class="stat-icon" style="width:36px;height:36px;font-size:1rem">←</div><div><div class="stat-value" style="font-size:1.3rem">${sm.total_retours}</div><div class="stat-label">Retours</div></div></div>
+            <div class="stat-card cyan" style="padding:16px"><div class="stat-icon" style="width:36px;height:36px;font-size:1rem">↑</div><div><div class="stat-value" style="font-size:1.3rem">${sm.total_sorties}</div><div class="stat-label">Sorties</div></div></div>`;
+        const body = document.getElementById('historyBody');
+        if (!data.movements.length) { body.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Aucun mouvement</p></div></td></tr>'; return; }
+        body.innerHTML = data.movements.map(m => `<tr>
+            <td>${formatDate(m.date)}</td>
+            <td>${badgeFor(m.action_type)}</td>
+            <td style="font-weight:600;color:var(--text-primary)">${m.equipment_name}</td>
+            <td style="font-weight:700">${m.quantity}</td>
+            <td>${m.completed_by_name || '—'}</td>
+            <td>${m.assigned_to_name || '—'}</td>
+            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.notes || '—'}</td>
+        </tr>`).join('');
+    } catch { document.getElementById('historyBody').innerHTML = '<tr><td colspan="7" class="text-center" style="color:var(--accent-red)">Erreur</td></tr>'; }
+}
+
+async function loadEquipmentFilter() {
+    try {
+        const eq = await apiCall('/api/equipment-list/');
+        const sel = document.getElementById('historyEquipment');
+        eq.forEach(e => { const o = document.createElement('option'); o.value = e.id; o.textContent = e.name + ' [' + e.internal_id + ']'; sel.appendChild(o); });
+    } catch {}
+}
+
+function refreshAll() { loadStats(); loadStock(); loadLoans(); loadHistory(); showToast('Données actualisées', 'success'); }
+
+// Init
+loadStats(); loadStock(); loadLoans(); loadHistory(); loadEquipmentFilter();
+</script>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DRC - Système de gestion des prêts d'équipements">
+    <title>{% block title %}DRC{% endblock %} | Dominion RC</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% block body %}{% endblock %}
+    <div class="toast-container" id="toastContainer"></div>
+    <script>
+    // ── Global Utilities ──
+    function getCookie(name) {
+        let v = null;
+        document.cookie.split(';').forEach(c => {
+            c = c.trim();
+            if (c.startsWith(name + '=')) v = decodeURIComponent(c.substring(name.length + 1));
+        });
+        return v;
+    }
+    const CSRF = getCookie('csrftoken');
+
+    async function apiCall(url, method = 'GET', body = null) {
+        const opts = { method, headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF }, credentials: 'same-origin' };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        const data = await res.json();
+        if (!res.ok) throw { status: res.status, ...data };
+        return data;
+    }
+
+    function showToast(msg, type = 'info') {
+        const c = document.getElementById('toastContainer');
+        const t = document.createElement('div');
+        t.className = 'toast toast-' + type;
+        t.innerHTML = '<span>' + (type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ') + '</span><span>' + msg + '</span>';
+        c.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 4000);
+    }
+
+    function formatDate(d) {
+        if (!d) return '—';
+        const dt = new Date(d);
+        return dt.toLocaleDateString('fr-FR') + ' ' + dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function badgeFor(type) {
+        const map = { 'ENTREE': 'badge-entree', 'PRET': 'badge-pret', 'RETOUR': 'badge-retour', 'SORTIE': 'badge-sortie', 'ADMIN': 'badge-admin', 'MANAGER': 'badge-manager', 'USER': 'badge-user' };
+        const labels = { 'ENTREE': 'Entrée', 'PRET': 'Prêt', 'RETOUR': 'Retour', 'SORTIE': 'Sortie', 'ADMIN': 'Admin', 'MANAGER': 'Manager', 'USER': 'Utilisateur' };
+        return '<span class="badge ' + (map[type] || '') + '">' + (labels[type] || type) + '</span>';
+    }
+
+    async function doLogout() {
+        await fetch('/api/logout/', { method: 'POST', headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' });
+        window.location.href = '/login/';
+    }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
