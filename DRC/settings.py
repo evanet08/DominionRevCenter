@@ -61,21 +61,40 @@ TEMPLATES = [
 WSGI_APPLICATION = 'DRC.wsgi.application'
 
 # ──────────────────────────────────────────────
-# Database - MySQL
+# Database
 # ──────────────────────────────────────────────
+# Production: MySQL
+MYSQL_DB = {
+    'ENGINE': 'django.db.backends.mysql',
+    'NAME': 'dominionrc',
+    'USER': 'link2ictgroup',
+    'PASSWORD': 'ictgroupuser123',
+    'HOST': '87.106.23.108',
+    'PORT': '3306',
+    'OPTIONS': {
+        'charset': 'utf8mb4',
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    },
+}
+
+# Fallback: SQLite (local dev)
+SQLITE_DB = {
+    'ENGINE': 'django.db.backends.sqlite3',
+    'NAME': BASE_DIR / 'db.sqlite3',
+}
+
+# Auto-detect: use MySQL if reachable, otherwise SQLite
+import socket
+def _mysql_reachable(host='87.106.23.108', port=3306, timeout=3):
+    try:
+        s = socket.create_connection((host, port), timeout=timeout)
+        s.close()
+        return True
+    except (socket.timeout, OSError):
+        return False
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'dominionrc',
-        'USER': 'link2ictgroup',
-        'PASSWORD': 'ictgroupuser123',
-        'HOST': '87.106.23.108',
-        'PORT': '3306',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
-    }
+    'default': MYSQL_DB if _mysql_reachable() else SQLITE_DB
 }
 
 # ──────────────────────────────────────────────
